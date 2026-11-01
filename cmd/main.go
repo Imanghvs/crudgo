@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Imanghvs/crudgo/internal/adapter/httpapi"
+	"github.com/Imanghvs/crudgo/internal/adapter/postgres"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -49,9 +50,14 @@ func run() error {
 
 	log.Printf("Starting the server on port %d", port)
 
+	repo := postgres.NewBeneficiaryRepository(pool)
+	handler := httpapi.NewBeneficiaryHandler(repo)
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", httpapi.Health)
+
+	mux.HandleFunc("POST /beneficiaries", handler.CreateBeneficiary)
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
 		return fmt.Errorf("cannot start the server: %w", err)
