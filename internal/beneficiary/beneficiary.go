@@ -13,3 +13,9 @@ type Beneficiary struct {
 	IBAN       string
 	CreatedAt  time.Time
 }
+
+type CreateInput struct {
+	MerchantID uuid.UUID
+	Name       string
+	IBAN       string
+}
