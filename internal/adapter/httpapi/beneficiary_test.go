@@ -291,3 +291,78 @@ func TestBeneficiaryHandler_Create_RepositoryError(t *testing.T) {
 		})
 	}
 }
+
+func TestBeneficiaryHandler_Create_RequestTooLarge(t *testing.T) {
+	validInput := CreateBeneficiaryRequest{
+		MerchantID: uuid.New(),
+		Name:       "TestName",
+		IBAN:       "TEST-IBAN-001",
+	}
+
+	oversizedInput := validInput
+	oversizedInput.Name = strings.Repeat("A", 17<<10)
+
+	validBody, err := json.Marshal(validInput)
+	if err != nil {
+		t.Fatalf("marshal valid input: %v", err)
+	}
+
+	oversizedBody, err := json.Marshal(oversizedInput)
+	if err != nil {
+		t.Fatalf("marshal oversized input: %v", err)
+	}
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "oversized JSON object",
+			body: string(oversizedBody),
+		},
+		{
+			name: "oversized trailing whitespace",
+			body: string(validBody) + strings.Repeat(" ", 17<<10),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &fakeRepo{}
+			handler := NewBeneficiaryHandler(repo)
+
+			req := httptest.NewRequest(
+				http.MethodPost,
+				"/beneficiaries",
+				strings.NewReader(tc.body),
+			)
+			req.Header.Set("Content-Type", "application/json")
+
+			recorder := httptest.NewRecorder()
+			handler.CreateBeneficiary(recorder, req)
+
+			if recorder.Code != http.StatusRequestEntityTooLarge {
+				t.Errorf(
+					"status = %d, want %d",
+					recorder.Code,
+					http.StatusRequestEntityTooLarge,
+				)
+			}
+
+			if got := recorder.Body.String(); got != "request body too large\n" {
+				t.Errorf(
+					"response body = %q, want %q",
+					got,
+					"request body too large\n",
+				)
+			}
+
+			if repo.createCalls != 0 {
+				t.Errorf(
+					"repository calls = %d, want 0",
+					repo.createCalls,
+				)
+			}
+		})
+	}
+}
