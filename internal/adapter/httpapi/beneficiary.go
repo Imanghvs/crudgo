@@ -85,9 +85,6 @@ func (handler *BeneficiaryHandler) CreateBeneficiary(
 				Message: "beneficiary already exists",
 				Cause:   err,
 			}
-
-			writeHTTPError(w, r, err)
-			return
 		}
 
 		writeHTTPError(w, r, err)
