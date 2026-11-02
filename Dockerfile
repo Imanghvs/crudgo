@@ -1,0 +1,18 @@
+
+FROM golang:1.27.3-alpine AS builder
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -o /app ./cmd
+
+FROM gcr.io/distroless/static-debian13:nonroot
+
+COPY --from=builder /app /app
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app"]

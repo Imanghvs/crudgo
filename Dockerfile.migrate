@@ -1,0 +1,14 @@
+FROM golang:1.27.3-alpine AS builder
+
+
+RUN CGO_ENABLED=0 go install \
+    -tags="no_mysql,no_sqlite3,no_mssql,no_clickhouse,no_ydb,no_libsql,no_vertica" \
+    -ldflags="-s -w" \
+    github.com/pressly/goose/v3/cmd/goose@v3.29.0
+
+FROM gcr.io/distroless/static-debian13:nonroot
+
+COPY --from=builder /go/bin/goose /goose
+COPY migrations /migrations
+
+ENTRYPOINT ["/goose"]
