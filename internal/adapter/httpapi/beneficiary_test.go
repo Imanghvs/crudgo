@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -17,12 +18,20 @@ import (
 
 type fakeRepo struct {
 	beneficiaries []beneficiary.Beneficiary
+	createErr     error
+	createCalls   int
 }
 
 func (r *fakeRepo) Create(
 	ctx context.Context,
 	input beneficiary.CreateInput,
 ) (beneficiary.Beneficiary, error) {
+	r.createCalls++
+
+	if r.createErr != nil {
+		return beneficiary.Beneficiary{}, r.createErr
+	}
+
 	created := beneficiary.Beneficiary{
 		ID:         uuid.New(),
 		MerchantID: input.MerchantID,
@@ -191,9 +200,91 @@ func TestBeneficiaryHandler_Create_InvalidRequest(t *testing.T) {
 				)
 			}
 
+			if repo.createCalls != 0 {
+				t.Errorf("repository calls = %d, want 0", repo.createCalls)
+			}
+		})
+	}
+}
+
+func TestBeneficiaryHandler_Create_RepositoryError(t *testing.T) {
+	tests := []struct {
+		name       string
+		repoErr    error
+		wantStatus int
+		wantBody   string
+	}{
+		{
+			name: "beneficiary already exists",
+			repoErr: fmt.Errorf(
+				"create beneficiary: %w",
+				beneficiary.ErrAlreadyExists,
+			),
+			wantStatus: http.StatusConflict,
+			wantBody:   "beneficiary already exists\n",
+		},
+		{
+			name:       "unexpected database error",
+			repoErr:    errors.New("database connection failed: internal details"),
+			wantStatus: http.StatusInternalServerError,
+			wantBody:   "internal server error\n",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := &fakeRepo{
+				createErr: tc.repoErr,
+			}
+			handler := NewBeneficiaryHandler(repo)
+
+			input := CreateBeneficiaryRequest{
+				MerchantID: uuid.New(),
+				Name:       "TestName",
+				IBAN:       "TEST-IBAN-001",
+			}
+
+			body, err := json.Marshal(input)
+			if err != nil {
+				t.Fatalf("failed to marshal request: %v", err)
+			}
+
+			req := httptest.NewRequest(
+				http.MethodPost,
+				"/beneficiaries",
+				bytes.NewReader(body),
+			)
+			req.Header.Set("Content-Type", "application/json")
+
+			recorder := httptest.NewRecorder()
+			handler.CreateBeneficiary(recorder, req)
+
+			if recorder.Code != tc.wantStatus {
+				t.Errorf(
+					"status = %d, want %d",
+					recorder.Code,
+					tc.wantStatus,
+				)
+			}
+
+			if got := recorder.Body.String(); got != tc.wantBody {
+				t.Errorf(
+					"response body = %q, want %q",
+					got,
+					tc.wantBody,
+				)
+			}
+
+			if repo.createCalls != 1 {
+				t.Errorf(
+					"repository calls = %d, want 1",
+					repo.createCalls,
+				)
+			}
+
 			if len(repo.beneficiaries) != 0 {
 				t.Errorf(
-					"repository created %d beneficiaries, want 0",
+					"created beneficiaries = %d, want 0",
 					len(repo.beneficiaries),
 				)
 			}
