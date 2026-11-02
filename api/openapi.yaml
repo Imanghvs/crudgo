@@ -81,7 +81,13 @@ paths:
               schema:
                 type: string
               example: "beneficiary already exists"
-
+        '413':
+          description: Request body exceeds the 16 KiB size limit.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "request body too large"
         '500':
           description: Unexpected internal server error.
           content:
