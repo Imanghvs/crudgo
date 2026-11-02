@@ -1,6 +1,7 @@
 package beneficiary
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,3 +20,5 @@ type CreateInput struct {
 	Name       string
 	IBAN       string
 }
+
+var ErrAlreadyExists = errors.New("beneficiary already exists")

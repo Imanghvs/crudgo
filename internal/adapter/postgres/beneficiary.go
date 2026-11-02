@@ -2,9 +2,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Imanghvs/crudgo/internal/beneficiary"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -37,6 +39,17 @@ func (r *BeneficiaryRepository) Create(
 		created.IBAN,
 	).Scan(&created.ID, &created.CreatedAt)
 	if err != nil {
+		var pgErr *pgconn.PgError
+
+		if errors.As(err, &pgErr) &&
+			pgErr.Code == "23505" &&
+			pgErr.ConstraintName == "beneficiaries_merchant_iban_unique" {
+			return beneficiary.Beneficiary{}, fmt.Errorf(
+				"create beneficiary: %w: %w",
+				beneficiary.ErrAlreadyExists,
+				err,
+			)
+		}
 		return beneficiary.Beneficiary{}, fmt.Errorf("create beneficiary: %w", err)
 	}
 
