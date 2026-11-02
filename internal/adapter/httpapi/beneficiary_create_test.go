@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,38 +9,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Imanghvs/crudgo/internal/beneficiary"
 	"github.com/google/uuid"
 )
-
-type fakeRepo struct {
-	beneficiaries []beneficiary.Beneficiary
-	createErr     error
-	createCalls   int
-}
-
-func (r *fakeRepo) Create(
-	ctx context.Context,
-	input beneficiary.CreateInput,
-) (beneficiary.Beneficiary, error) {
-	r.createCalls++
-
-	if r.createErr != nil {
-		return beneficiary.Beneficiary{}, r.createErr
-	}
-
-	created := beneficiary.Beneficiary{
-		ID:         uuid.New(),
-		MerchantID: input.MerchantID,
-		Name:       input.Name,
-		IBAN:       input.IBAN,
-		CreatedAt:  time.Now(),
-	}
-	r.beneficiaries = append(r.beneficiaries, created)
-	return created, nil
-}
 
 func TestBeneficiaryHandler_Create(t *testing.T) {
 	repo := &fakeRepo{}
@@ -82,7 +53,7 @@ func TestBeneficiaryHandler_Create(t *testing.T) {
 	}
 	stored := repo.beneficiaries[0]
 
-	var response CreateBeneficiaryResponse
+	var response BeneficiaryResponse
 
 	if err := json.NewDecoder(recorder.Body).Decode(&response); err != nil {
 		t.Fatalf("failed to decode response: %v", err)

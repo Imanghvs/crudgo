@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/Imanghvs/crudgo/internal/beneficiary"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -54,4 +56,30 @@ func (r *BeneficiaryRepository) Create(
 	}
 
 	return created, nil
+}
+
+func (r *BeneficiaryRepository) GetByID(
+	ctx context.Context,
+	id uuid.UUID,
+) (beneficiary.Beneficiary, error) {
+	var res beneficiary.Beneficiary
+	err := r.pool.QueryRow(
+		ctx,
+		`SELECT id, merchant_id, name, iban, created_at
+		FROM beneficiaries
+		WHERE id = $1`,
+		id,
+	).Scan(&res.ID, &res.MerchantID, &res.Name, &res.IBAN, &res.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return beneficiary.Beneficiary{}, fmt.Errorf(
+				"get beneficiary by id: %w: %w",
+				beneficiary.ErrNotFound,
+				err,
+			)
+		}
+		return beneficiary.Beneficiary{}, fmt.Errorf("get beneficiary by id: %w", err)
+	}
+
+	return res, nil
 }

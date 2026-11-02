@@ -22,3 +22,5 @@ type CreateInput struct {
 }
 
 var ErrAlreadyExists = errors.New("beneficiary already exists")
+
+var ErrNotFound = errors.New("beneficiary not found")

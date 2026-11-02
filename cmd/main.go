@@ -58,6 +58,7 @@ func run() error {
 	mux.HandleFunc("GET /health", httpapi.Health)
 
 	mux.HandleFunc("POST /beneficiaries", handler.CreateBeneficiary)
+	mux.HandleFunc("GET /beneficiaries/{id}", handler.GetBeneficiaryByID)
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", port), mux); err != nil {
 		return fmt.Errorf("cannot start the server: %w", err)
