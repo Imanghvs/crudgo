@@ -1,0 +1,24 @@
+type: object
+description: Information required to create a beneficiary.
+additionalProperties: false
+
+required:
+  - merchant_id
+  - name
+  - iban
+
+properties:
+  merchant_id:
+    type: string
+    format: uuid
+    description: Non-nil UUID identifying the merchant.
+
+  name:
+    type: string
+    minLength: 1
+    pattern: '\S'
+
+  iban:
+    type: string
+    minLength: 1
+    pattern: '\S'

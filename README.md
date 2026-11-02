@@ -142,3 +142,8 @@ Tests fail when `TEST_DATABASE_URL` is missing or points to a database with an u
 
 - The test database must exist and have migrations applied before running integration tests.
 - Integration tests require a running PostgreSQL instance.
+
+## License
+
+This project is licensed under the MIT License.
+See [LICENSE](LICENSE) for details.

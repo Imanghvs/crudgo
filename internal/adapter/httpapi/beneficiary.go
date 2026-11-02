@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/Imanghvs/crudgo/internal/beneficiary"
 	"github.com/google/uuid"
@@ -20,6 +19,7 @@ type BeneficiaryRepository interface {
 		ctx context.Context,
 		input beneficiary.CreateInput,
 	) (beneficiary.Beneficiary, error)
+	GetByID(ctx context.Context, id uuid.UUID) (beneficiary.Beneficiary, error)
 }
 
 func NewBeneficiaryHandler(
@@ -28,20 +28,6 @@ func NewBeneficiaryHandler(
 	return &BeneficiaryHandler{
 		repo: repo,
 	}
-}
-
-type CreateBeneficiaryRequest struct {
-	MerchantID uuid.UUID `json:"merchant_id"`
-	Name       string    `json:"name"`
-	IBAN       string    `json:"iban"`
-}
-
-type CreateBeneficiaryResponse struct {
-	ID         uuid.UUID `json:"id"`
-	MerchantID uuid.UUID `json:"merchant_id"`
-	Name       string    `json:"name"`
-	IBAN       string    `json:"iban"`
-	CreatedAt  time.Time `json:"created_at"`
 }
 
 func (handler *BeneficiaryHandler) CreateBeneficiary(
@@ -91,7 +77,7 @@ func (handler *BeneficiaryHandler) CreateBeneficiary(
 		return
 	}
 
-	response := CreateBeneficiaryResponse{
+	response := BeneficiaryResponse{
 		ID:         created.ID,
 		MerchantID: created.MerchantID,
 		Name:       created.Name,
@@ -100,4 +86,39 @@ func (handler *BeneficiaryHandler) CreateBeneficiary(
 	}
 
 	writeJSON(w, r, http.StatusCreated, response)
+}
+
+func (handler *BeneficiaryHandler) GetBeneficiaryByID(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil || id == uuid.Nil {
+		writeHTTPError(w, r, badRequest("invalid beneficiary id"))
+		return
+	}
+
+	ben, err := handler.repo.GetByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, beneficiary.ErrNotFound) {
+			err = &HTTPError{
+				Status:  http.StatusNotFound,
+				Message: "beneficiary not found",
+				Cause:   err,
+			}
+		}
+
+		writeHTTPError(w, r, err)
+		return
+	}
+
+	response := BeneficiaryResponse{
+		ID:         ben.ID,
+		MerchantID: ben.MerchantID,
+		Name:       ben.Name,
+		IBAN:       ben.IBAN,
+		CreatedAt:  ben.CreatedAt,
+	}
+
+	writeJSON(w, r, http.StatusOK, response)
 }
