@@ -2,10 +2,7 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"io"
-	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -51,31 +48,25 @@ func (handler *BeneficiaryHandler) CreateBeneficiary(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
 	var dto CreateBeneficiaryRequest
-	if err := decoder.Decode(&dto); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
-	var extra any
-	if err := decoder.Decode(&extra); err != io.EOF {
-		http.Error(w, "request body must contain exactly one JSON object", http.StatusBadRequest)
+
+	if err := decodeJSON(w, r, &dto); err != nil {
+		writeHTTPError(w, r, err)
 		return
 	}
 
 	if strings.TrimSpace(dto.Name) == "" {
-		http.Error(w, "name must not be blank", http.StatusBadRequest)
+		writeHTTPError(w, r, badRequest("name must not be blank"))
 		return
 	}
 
 	if dto.MerchantID == uuid.Nil {
-		http.Error(w, "invalid or empty merchant id", http.StatusBadRequest)
+		writeHTTPError(w, r, badRequest("invalid or empty merchant id"))
 		return
 	}
 
 	if strings.TrimSpace(dto.IBAN) == "" {
-		http.Error(w, "iban must not be blank", http.StatusBadRequest)
+		writeHTTPError(w, r, badRequest("iban must not be blank"))
 		return
 	}
 
@@ -89,12 +80,17 @@ func (handler *BeneficiaryHandler) CreateBeneficiary(
 	)
 	if err != nil {
 		if errors.Is(err, beneficiary.ErrAlreadyExists) {
-			http.Error(w, "beneficiary already exists", http.StatusConflict)
+			err = &HTTPError{
+				Status:  http.StatusConflict,
+				Message: "beneficiary already exists",
+				Cause:   err,
+			}
+
+			writeHTTPError(w, r, err)
 			return
 		}
 
-		slog.ErrorContext(r.Context(), "failed to create beneficiary", "error", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		writeHTTPError(w, r, err)
 		return
 	}
 
@@ -106,10 +102,5 @@ func (handler *BeneficiaryHandler) CreateBeneficiary(
 		CreatedAt:  created.CreatedAt,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		slog.ErrorContext(r.Context(), "failed to encode response", "error", err)
-	}
+	writeJSON(w, r, http.StatusCreated, response)
 }
