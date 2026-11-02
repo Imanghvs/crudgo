@@ -1,0 +1,41 @@
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      POSTGRES_USER: crudgo
+      POSTGRES_PASSWORD: ci-test-password
+      POSTGRES_DB: crudgo_test
+      TEST_DATABASE_URL: postgres://crudgo:ci-test-password@127.0.0.1:5432/crudgo_test?sslmode=disable
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Run static analysis
+        run: go vet ./...
+        
+      - name: Start PostgreSQL
+        run: docker compose up --wait --wait-timeout 120 postgres
+
+      - name: Apply database migrations
+        run: docker compose run --rm --build migrate
+
+      - name: Run tests
+        run: go test -count=1 ./...
+
