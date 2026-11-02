@@ -17,6 +17,14 @@ go install github.com/pressly/goose/v3/cmd/goose@latest
 
 Ensure the installed `goose` executable is available in your `PATH`.
 
+## API documentation
+
+The API contract is defined using OpenAPI 3.1.
+
+See [`api/openapi.yaml`](api/openapi.yaml) for available endpoints,
+request and response schemas, validation requirements, and HTTP
+status codes.
+
 ## Local setup
 
 ### 1. Configure environment variables

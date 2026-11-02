@@ -1,0 +1,156 @@
+
+openapi: 3.1.0
+
+info:
+  title: CRUDGo API
+  version: 0.1.0
+  description: REST API for managing merchant beneficiaries.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Beneficiaries
+    description: Beneficiary management operations
+
+paths:
+  /beneficiaries:
+    post:
+      tags:
+        - Beneficiaries
+      operationId: createBeneficiary
+      summary: Create a beneficiary
+      description: |
+        Creates a beneficiary for a merchant.
+
+        A merchant cannot register the same IBAN more than once.
+        Different merchants may register the same IBAN.
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBeneficiaryRequest'
+            example:
+              merchant_id: "550e8400-e29b-41d4-a716-446655440000"
+              name: "Test Beneficiary"
+              iban: "TEST-IBAN-001"
+
+      responses:
+        '201':
+          description: Beneficiary successfully created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Beneficiary'
+              example:
+                id: "123e4567-e89b-42d3-a456-426614174000"
+                merchant_id: "550e8400-e29b-41d4-a716-446655440000"
+                name: "Test Beneficiary"
+                iban: "TEST-IBAN-001"
+                created_at: "2026-11-02T12:00:00Z"
+
+        '400':
+          description: Invalid request body or missing required fields.
+          content:
+            text/plain:
+              schema:
+                type: string
+              examples:
+                invalidJson:
+                  summary: Invalid JSON
+                  value: "invalid request body"
+                blankName:
+                  summary: Blank beneficiary name
+                  value: "name must not be blank"
+                blankIBAN:
+                  summary: Blank IBAN
+                  value: "iban must not be blank"
+                invalidMerchant:
+                  summary: Missing or nil merchant ID
+                  value: "invalid or empty merchant id"
+
+        '409':
+          description: |
+            A beneficiary with the same merchant ID and IBAN
+            already exists.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "beneficiary already exists"
+
+        '500':
+          description: Unexpected internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "internal server error"
+
+components:
+  schemas:
+    CreateBeneficiaryRequest:
+      type: object
+      description: Information required to create a beneficiary.
+      additionalProperties: false
+      required:
+        - merchant_id
+        - name
+        - iban
+      properties:
+        merchant_id:
+          type: string
+          format: uuid
+          description: Non-nil UUID identifying the merchant.
+
+        name:
+          type: string
+          minLength: 1
+          pattern: '\S'
+          description: Beneficiary name must not be blank.
+
+        iban:
+          type: string
+          minLength: 1
+          pattern: '\S'
+          description: |
+            Beneficiary account identifier. Must not be blank.
+            Full IBAN format and checksum validation are not
+            currently implemented.
+
+    Beneficiary:
+      type: object
+      description: A beneficiary created and stored in PostgreSQL.
+      additionalProperties: false
+      required:
+        - id
+        - merchant_id
+        - name
+        - iban
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: PostgreSQL-generated beneficiary ID.
+
+        merchant_id:
+          type: string
+          format: uuid
+          description: UUID identifying the merchant.
+
+        name:
+          type: string
+          description: Beneficiary name.
+
+        iban:
+          type: string
+          description: Beneficiary account identifier.
+
+        created_at:
+          type: string
+          format: date-time
+          description: PostgreSQL-generated creation timestamp.
