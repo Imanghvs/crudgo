@@ -1,0 +1,32 @@
+type: object
+description: A beneficiary created and stored in PostgreSQL.
+additionalProperties: false
+required:
+  - id
+  - merchant_id
+  - name
+  - iban
+  - created_at
+properties:
+  id:
+    type: string
+    format: uuid
+    description: PostgreSQL-generated beneficiary ID.
+
+  merchant_id:
+    type: string
+    format: uuid
+    description: UUID identifying the merchant.
+
+  name:
+    type: string
+    description: Beneficiary name.
+
+  iban:
+    type: string
+    description: Beneficiary account identifier.
+
+  created_at:
+    type: string
+    format: date-time
+    description: PostgreSQL-generated creation timestamp.
